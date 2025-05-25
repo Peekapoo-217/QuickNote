@@ -1,4 +1,4 @@
-package com.example.quicknotes.screen
+package com.example.quicknotes.screen.ui
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -46,7 +46,7 @@ fun TranslateScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Dịch Ảnh Sang Tiếng Việt") })
+            TopAppBar(title = { Text("OCR Translate") })
         }
     ) { innerPadding ->
         Box(
@@ -82,14 +82,14 @@ fun TranslateScreen() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (originalText.isNotBlank()) {
-                    Text("📄 Văn bản OCR:", style = MaterialTheme.typography.titleMedium)
+                    Text("OCR:", style = MaterialTheme.typography.titleMedium)
                     Text(originalText)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (translatedText.isNotBlank()) {
-                    Text("🌍 Bản dịch tiếng Việt:", style = MaterialTheme.typography.titleMedium)
+                    Text("Translate:", style = MaterialTheme.typography.titleMedium)
                     Text(translatedText)
                 }
             }
