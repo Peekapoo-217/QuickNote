@@ -198,7 +198,7 @@ fun NoteItem(
     val textDecoration = if (note.isCompleted) TextDecoration.LineThrough else TextDecoration.None
     val textAlpha = if (note.isCompleted) 0.5f else 1f
 
-    // Tự động chuyển vào danh sách hoàn thành sau 10s nếu đã đánh dấu completed
+// Auto redirect completed-list
     LaunchedEffect(note.isCompleted) {
         if (note.isCompleted) {
             delay(10_000)

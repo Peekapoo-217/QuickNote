@@ -43,7 +43,7 @@ fun AppNavigation(
         }
 
         composable("translate_screen") {
-            TranslateScreen()
+            TranslateScreen(viewModel = viewModel)
         }
 
         composable("completed_notes") {

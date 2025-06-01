@@ -15,12 +15,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.example.quicknotes.data.local.entity.Note
 import com.example.quicknotes.ocr.TextRecognitionHelper
 import com.example.quicknotes.translate.TranslationHelper
+import com.example.quicknotes.viewmodel.NoteViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranslateScreen() {
+fun TranslateScreen(viewModel : NoteViewModel) {
     val context = LocalContext.current
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -39,6 +41,16 @@ fun TranslateScreen() {
                 originalText = text
                 TranslationHelper.translateText(context, text) { translated ->
                     translatedText = translated
+
+                    val newNote = Note(
+                        title = "Ảnh dịch ${System.currentTimeMillis()}",
+                        content = "$translated\n\n[OCR gốc: $text]",
+                        createdAt = System.currentTimeMillis(),
+                        isCompleted = false,
+                        reminderTime = null,
+                        colorTag = "none"
+                    )
+                    viewModel.insert(newNote)
                 }
             }
         }
