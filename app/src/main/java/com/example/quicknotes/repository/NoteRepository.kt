@@ -13,7 +13,6 @@ class NoteRepository(private val noteDao: NoteDAO,
 
     fun getAllCompletedNotes(): Flow<List<CompletedNote>> = completedNoteDao.getAll()
 
-
     suspend fun getNoteById(id: Int): Note? = noteDao.getNoteById(id)
 
     suspend fun insert(note: Note) = noteDao.insert(note)

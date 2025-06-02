@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +24,7 @@ import com.example.quicknotes.viewmodel.NoteViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranslateScreen(viewModel : NoteViewModel) {
+fun TranslateScreen(viewModel: NoteViewModel) {
     val context = LocalContext.current
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -35,16 +37,15 @@ fun TranslateScreen(viewModel : NoteViewModel) {
         uri?.let {
             imageUri = it
             originalText = ""
-            translatedText = "Đang xử lý..."
+            translatedText = "Processing..."
 
             TextRecognitionHelper.recognizeText(context, it) { text ->
                 originalText = text
                 TranslationHelper.translateText(context, text) { translated ->
                     translatedText = translated
-
                     val newNote = Note(
-                        title = "Ảnh dịch ${System.currentTimeMillis()}",
-                        content = "$translated\n\n[OCR gốc: $text]",
+                        title = "Translated Image ${System.currentTimeMillis()}",
+                        content = "$translated\n\n[Original OCR: $text]\n[image_uri:${imageUri.toString()}]",
                         createdAt = System.currentTimeMillis(),
                         isCompleted = false,
                         reminderTime = null,
@@ -58,51 +59,77 @@ fun TranslateScreen(viewModel : NoteViewModel) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("OCR Translate") })
+            TopAppBar(title = { Text("Image Text Translation") })
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Select Image Button
+            ElevatedButton(
+                onClick = { launcher.launch("image/*") },
+                modifier = Modifier.fillMaxWidth(0.7f)
             ) {
-                Button(onClick = { launcher.launch("image/*") }) {
-                    Text("Chọn Ảnh")
+                Text("📷 Select Image")
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Display selected image (no card)
+            imageUri?.let {
+                Image(
+                    painter = rememberAsyncImagePainter(
+                        ImageRequest.Builder(context).data(it).build()
+                    ),
+                    contentDescription = "Selected Image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // Display OCR result (selectable)
+            if (originalText.isNotBlank()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("📝 Recognized Text", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SelectionContainer {
+                            Text(originalText)
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+            }
 
-                imageUri?.let {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            ImageRequest.Builder(context).data(it).build()
-                        ),
-                        contentDescription = "Ảnh đã chọn",
-                        modifier = Modifier
-                            .height(200.dp)
-                            .fillMaxWidth()
-                    )
-                }
-
+            // Display translated result (selectable)
+            if (translatedText.isNotBlank()) {
+                Divider()
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (originalText.isNotBlank()) {
-                    Text("OCR:", style = MaterialTheme.typography.titleMedium)
-                    Text(originalText)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (translatedText.isNotBlank()) {
-                    Text("Translate:", style = MaterialTheme.typography.titleMedium)
-                    Text(translatedText)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("🌍 Translated Text", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SelectionContainer {
+                            Text(translatedText)
+                        }
+                    }
                 }
             }
         }

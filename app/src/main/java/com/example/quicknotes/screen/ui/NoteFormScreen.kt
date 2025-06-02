@@ -1,4 +1,4 @@
-package com.example.quicknotes.screen
+package com.example.quicknotes.screen.ui
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog

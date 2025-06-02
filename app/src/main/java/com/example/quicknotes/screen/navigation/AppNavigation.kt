@@ -6,9 +6,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.quicknotes.data.local.entity.Note
-import com.example.quicknotes.screen.NoteFormScreen
+import com.example.quicknotes.screen.ui.NoteFormScreen
 import com.example.quicknotes.screen.ui.CompletedNotesScreen
-import com.example.quicknotes.screen.ui.NoteListScreen
+import com.example.quicknotes.screen.NoteListScreen
 import com.example.quicknotes.screen.ui.TranslateScreen
 import com.example.quicknotes.viewmodel.NoteViewModel
 
@@ -49,9 +49,11 @@ fun AppNavigation(
         composable("completed_notes") {
             CompletedNotesScreen(
                 completedNotes = viewModel.completedNotes.collectAsState().value,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                viewModel = viewModel
             )
         }
+
 
     }
 }

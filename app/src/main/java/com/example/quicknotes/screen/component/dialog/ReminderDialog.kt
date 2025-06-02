@@ -1,4 +1,4 @@
-package com.example.quicknotes.screen.component
+package com.example.quicknotes.screen.component.dialog
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog

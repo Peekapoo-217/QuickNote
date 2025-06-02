@@ -1,4 +1,4 @@
-package com.example.quicknotes.screen.ui
+package com.example.quicknotes.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells

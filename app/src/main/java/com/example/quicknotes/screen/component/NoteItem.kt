@@ -1,7 +1,8 @@
 package com.example.quicknotes.screen.component
 
+import android.net.Uri
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -27,6 +28,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import kotlinx.coroutines.delay
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import coil.compose.rememberAsyncImagePainter
+import com.example.quicknotes.screen.component.dialog.ReminderDialog
 
 /*@Composable
 fun NoteItem(
@@ -188,6 +191,12 @@ fun NoteItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val contentLines = note.content.split("\n")
+    val imageLine = contentLines.find { it.startsWith("[image_uri:") }
+    val imageUri = imageLine?.removePrefix("[image_uri:")?.removeSuffix("]")
+
+
+
     val animatedBgColor by animateColorAsState(
         if (isPressed) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
         else MaterialTheme.colorScheme.surface,
@@ -274,6 +283,18 @@ fun NoteItem(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
+
+            if (imageUri != null) {
+                Image(
+                    painter = rememberAsyncImagePainter(Uri.parse(imageUri)),
+                    contentDescription = "Ảnh dịch",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .padding(top = 8.dp)
+                )
+            }
+
 
             Spacer(modifier = Modifier.height(8.dp))
 

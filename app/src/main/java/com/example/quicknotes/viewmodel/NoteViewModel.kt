@@ -3,6 +3,7 @@ package com.example.quicknotes.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.quicknotes.data.local.entity.CompletedNote
 import com.example.quicknotes.data.local.entity.Note
 import com.example.quicknotes.repository.NoteRepository
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +31,12 @@ class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
         repository.insertCompleted(note)
         repository.delete(note)
     }
+    fun deleteCompleted(note: CompletedNote) = viewModelScope.launch {
+        repository.deleteCompleted(note)
+    }
 }
+
+
 
 class NoteViewModelFactory(private val repository: NoteRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
