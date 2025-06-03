@@ -9,6 +9,7 @@ import com.example.quicknotes.data.local.entity.Note
 import com.example.quicknotes.screen.ui.NoteFormScreen
 import com.example.quicknotes.screen.ui.CompletedNotesScreen
 import com.example.quicknotes.screen.NoteListScreen
+import com.example.quicknotes.screen.ui.RecordNoteScreen
 import com.example.quicknotes.screen.ui.TranslateScreen
 import com.example.quicknotes.viewmodel.NoteViewModel
 
@@ -25,7 +26,8 @@ fun AppNavigation(
                 viewModel = viewModel,
                 onAddNote = { navController.navigate("note_form") },
                 onAddImageNote = { navController.navigate("translate_screen") },
-                onNoteClick = { /* TODO: Edit note */ },
+                onRecordNote = { navController.navigate("record_note") },
+                onNoteClick = { /* TODO */ },
                 onViewCompletedNotes = { navController.navigate("completed_notes") }
             )
         }
@@ -52,6 +54,10 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 viewModel = viewModel
             )
+        }
+
+        composable("record_note") {
+            RecordNoteScreen(viewModel = viewModel, navController = navController)
         }
 
 

@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.quicknotes.data.local.entity.Note
-import com.example.quicknotes.ocr.TextRecognitionHelper
-import com.example.quicknotes.translate.TranslationHelper
+import com.example.quicknotes.utilities.ocr.TextRecognitionHelper
+import com.example.quicknotes.utilities.translate.TranslationHelper
 import com.example.quicknotes.viewmodel.NoteViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

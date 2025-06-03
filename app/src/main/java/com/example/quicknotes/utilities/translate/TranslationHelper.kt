@@ -1,4 +1,4 @@
-package com.example.quicknotes.translate
+package com.example.quicknotes.utilities.translate
 
 import android.content.Context
 import com.google.mlkit.nl.translate.TranslateLanguage

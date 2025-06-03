@@ -1,4 +1,4 @@
-package com.example.quicknotes.ocr
+package com.example.quicknotes.utilities.ocr
 
 import android.content.Context
 import android.net.Uri

@@ -23,7 +23,6 @@ import com.example.quicknotes.data.local.entity.Note
 import com.example.quicknotes.screen.component.NoteItem
 import com.example.quicknotes.viewmodel.NoteViewModel
 
-/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteListScreen(
@@ -32,70 +31,8 @@ fun NoteListScreen(
     onNoteClick: (Note) -> Unit,
     viewModel: NoteViewModel,
     onAddImageNote: () -> Unit,
-    onViewCompletedNotes: () -> Unit
-) {
-    val screenWidth = LocalConfiguration.current.screenWidthDp
-    val columns = if (screenWidth < 600) 2 else 3
-
-    val fabExpanded = remember { mutableStateOf(false) }
-
-
-    Scaffold(topBar = {
-        CenterAlignedTopAppBar(title = { Text("Quick Notes") })
-    }, floatingActionButton = {
-        Box {
-            FloatingActionButton(onClick = { fabExpanded.value = !fabExpanded.value }) {
-                Icon(Icons.Default.Add, contentDescription = "Add")
-            }
-
-            DropdownMenu(expanded = fabExpanded.value,
-                onDismissRequest = { fabExpanded.value = false }) {
-                DropdownMenuItem(text = { Text("Thêm ghi chú văn bản") }, onClick = {
-                    fabExpanded.value = false
-                    onAddNote()
-                })
-                DropdownMenuItem(text = { Text("Thêm từ hình ảnh") }, onClick = {
-                    fabExpanded.value = false
-                    onAddImageNote()
-                })
-            }
-        }
-    }) { padding ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(notes) { note ->
-                NoteItem(note = note,
-                    onClick = { onNoteClick(note) },
-                    onDelete = { viewModel.delete(note) },
-                    onToggleCompleted = { isChecked ->
-                        viewModel.update(note.copy(isCompleted = isChecked))
-                    },
-                    onComplete = {
-                        viewModel.completeNote(note)
-                    }
-                )
-            }
-        }
-    }
-}
-*/
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NoteListScreen(
-    notes: List<Note>,
-    onAddNote: () -> Unit,
-    onNoteClick: (Note) -> Unit,
-    viewModel: NoteViewModel,
-    onAddImageNote: () -> Unit,
-    onViewCompletedNotes: () -> Unit
+    onViewCompletedNotes: () -> Unit,
+    onRecordNote: () -> Unit
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val columns = if (screenWidth < 600) 2 else 3
@@ -118,24 +55,31 @@ fun NoteListScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Thêm ghi chú văn bản") },
+                        text = { Text("Text Note") },
                         onClick = {
                             fabExpanded.value = false
                             onAddNote()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Thêm từ hình ảnh") },
+                        text = { Text("Image Note") },
                         onClick = {
                             fabExpanded.value = false
                             onAddImageNote()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Xem ghi chú đã hoàn thành") },
+                        text = { Text("Completed Notes") },
                         onClick = {
                             fabExpanded.value = false
                             onViewCompletedNotes()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Record Voice Note") },
+                        onClick = {
+                            fabExpanded.value = false
+                            onRecordNote()
                         }
                     )
                 }
