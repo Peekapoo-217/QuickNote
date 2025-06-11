@@ -26,11 +26,18 @@ fun ReminderWatcher(notes: List<Note>, context: Context) {
                 if (note.id == 0) return@forEach  // Bỏ qua nếu note chưa có id thực
 
                 val remaining = reminderTime - currentTime
-                val is30MinLeft = remaining in (29 * 60 * 1000)..(30 * 60 * 1000)
+                val reminderMinutes = when (note.colorTag) {
+                    "red" -> 30 // High priority: 30 minutes
+                    "orange" -> 10 // Medium priority: 10 minutes
+                    "green" -> 5 // Low priority: 5 minutes
+                    else -> 30 // Default: 30 minutes
+                }
+                
+                val isTimeToRemind = remaining in ((reminderMinutes - 1) * 60 * 1000)..(reminderMinutes * 60 * 1000)
                 val alreadyNotified = notifiedNotes.contains(note.id)
 
-                if (is30MinLeft && !alreadyNotified) {
-                    showReminderNotification(context, note)
+                if (isTimeToRemind && !alreadyNotified) {
+                    showReminderNotification(context, note, reminderMinutes)
                     notifiedNotes = notifiedNotes + note.id
                 }
             }
@@ -39,12 +46,12 @@ fun ReminderWatcher(notes: List<Note>, context: Context) {
     }
 }
 
-private fun showReminderNotification(context: Context, note: Note) {
+private fun showReminderNotification(context: Context, note: Note, reminderMinutes: Int) {
     val channelId = "reminder_channel"
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val name = "Hey!!!"
-        val descriptionText = "Remember left time is 30m!!! Try not to give up !"
+        val descriptionText = "Remember left time is ${reminderMinutes}m!!! Try not to give up !"
         val importance = NotificationManager.IMPORTANCE_DEFAULT
         val channel = NotificationChannel(channelId, name, importance).apply {
             description = descriptionText
@@ -56,9 +63,9 @@ private fun showReminderNotification(context: Context, note: Note) {
     }
 
     val builder = NotificationCompat.Builder(context, channelId)
-        .setSmallIcon(R.drawable.ic_notification) // tạo icon trong drawable
+        .setSmallIcon(R.drawable.ic_notification)
         .setContentTitle("Hey!!")
-        .setContentText("Note: ${note.title} is due in 30 minutes! Hurry up!")
+        .setContentText("Note: ${note.title} is due in $reminderMinutes minutes! Hurry up!")
         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
     with(NotificationManagerCompat.from(context)) {

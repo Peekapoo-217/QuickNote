@@ -11,6 +11,7 @@ import com.example.quicknotes.screen.ui.CompletedNotesScreen
 import com.example.quicknotes.screen.NoteListScreen
 import com.example.quicknotes.screen.ui.RecordNoteScreen
 import com.example.quicknotes.screen.ui.TranslateScreen
+import com.example.quicknotes.screen.ui.NoteDetailScreen
 import com.example.quicknotes.viewmodel.NoteViewModel
 
 @Composable
@@ -27,7 +28,9 @@ fun AppNavigation(
                 onAddNote = { navController.navigate("note_form") },
                 onAddImageNote = { navController.navigate("translate_screen") },
                 onRecordNote = { navController.navigate("record_note") },
-                onNoteClick = { /* TODO */ },
+                onNoteClick = { note -> 
+                    navController.navigate("note_detail/${note.id}")
+                },
                 onViewCompletedNotes = { navController.navigate("completed_notes") }
             )
         }
@@ -60,6 +63,22 @@ fun AppNavigation(
             RecordNoteScreen(viewModel = viewModel, navController = navController)
         }
 
-
+        composable("note_detail/{noteId}") { backStackEntry ->
+            val noteId = backStackEntry.arguments?.getString("noteId")?.toIntOrNull()
+            val note = notes.find { it.id == noteId }
+            note?.let {
+                NoteDetailScreen(
+                    note = it,
+                    onBackClick = { navController.popBackStack() },
+                    onDeleteClick = {
+                        viewModel.delete(it)
+                        navController.popBackStack()
+                    },
+                    onToggleCompleted = { isCompleted ->
+                        viewModel.update(it.copy(isCompleted = isCompleted))
+                    }
+                )
+            }
+        }
     }
 }

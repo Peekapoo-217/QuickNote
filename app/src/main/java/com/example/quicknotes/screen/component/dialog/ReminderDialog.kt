@@ -17,10 +17,15 @@ import kotlinx.coroutines.delay
 import java.util.Date
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-
+import androidx.compose.ui.graphics.Color
+import android.widget.Toast
 
 @Composable
-fun ReminderDialog(note: Note, onDismiss: () -> Unit) {
+fun ReminderDialog(
+    note: Note,
+    onDismiss: () -> Unit,
+    onExpired: () -> Unit
+) {
     val context = LocalContext.current
 
     var remainingTime by remember {
@@ -29,11 +34,19 @@ fun ReminderDialog(note: Note, onDismiss: () -> Unit) {
         )
     }
 
+    var isExpired by remember { mutableStateOf(false) }
+
     // Cập nhật liên tục mỗi giây
     LaunchedEffect(note.reminderTime) {
         while (remainingTime > 0) {
             delay(1000)
             remainingTime = note.reminderTime?.minus(System.currentTimeMillis())?.coerceAtLeast(0L) ?: 0L
+        }
+        // Khi hết thời gian
+        if (!isExpired) {
+            isExpired = true
+            Toast.makeText(context, "Note '${note.title}' has expired!", Toast.LENGTH_LONG).show()
+            onExpired()
         }
     }
 
@@ -44,7 +57,13 @@ fun ReminderDialog(note: Note, onDismiss: () -> Unit) {
                 Text("Close")
             }
         },
-        title = { Text("Reminder Info", style = MaterialTheme.typography.titleLarge) },
+        title = { 
+            Text(
+                text = if (isExpired) "Note Expired!" else "Reminder Info",
+                style = MaterialTheme.typography.titleLarge,
+                color = if (isExpired) Color.Red else MaterialTheme.colorScheme.onSurface
+            )
+        },
         text = {
             if (note.reminderTime != null) {
                 val totalSeconds = remainingTime / 1000
@@ -56,11 +75,15 @@ fun ReminderDialog(note: Note, onDismiss: () -> Unit) {
                 Text(
                     text = buildString {
                         append("Remind at: ${Date(note.reminderTime)}\n")
-                        append("Time left: ")
-                        if (days > 0) append("$days d ")
-                        if (hours > 0 || days > 0) append("$hours h ")
-                        if (minutes > 0 || hours > 0 || days > 0) append("$minutes m ")
-                        append("$seconds s")
+                        if (isExpired) {
+                            append("\nThis note has expired! Please take action.")
+                        } else {
+                            append("Time left: ")
+                            if (days > 0) append("$days d ")
+                            if (hours > 0 || days > 0) append("$hours h ")
+                            if (minutes > 0 || hours > 0 || days > 0) append("$minutes m ")
+                            append("$seconds s")
+                        }
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = 8.dp)
