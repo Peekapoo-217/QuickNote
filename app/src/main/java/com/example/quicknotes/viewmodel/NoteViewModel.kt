@@ -6,37 +6,31 @@ import androidx.lifecycle.viewModelScope
 import com.example.quicknotes.data.local.entity.CompletedNote
 import com.example.quicknotes.data.local.entity.Note
 import com.example.quicknotes.repository.NoteRepository
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
-
 class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
-    val notes = repository.getAllNotes().stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
-
-    val completedNotes = repository.getAllCompletedNotes().stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
-
-    fun insert(note: Note) = viewModelScope.launch { repository.insert(note) }
-    fun update(note: Note) = viewModelScope.launch { repository.update(note) }
-    fun delete(note: Note) = viewModelScope.launch { repository.delete(note) }
-    fun completeNote(note: Note) = viewModelScope.launch {
-        repository.insertCompleted(note)
-        repository.delete(note)
+    
+    val allNotes: Flow<List<Note>> = repository.getAllNotes()
+    
+    val completedNotes: Flow<List<Note>> = repository.getCompletedNotes()
+    
+    fun insert(note: Note) = viewModelScope.launch {
+        repository.insertNote(note)
     }
-    fun deleteCompleted(note: CompletedNote) = viewModelScope.launch {
-        repository.deleteCompleted(note)
+    
+    fun update(note: Note) = viewModelScope.launch {
+        repository.updateNote(note)
+    }
+    
+    fun delete(note: Note) = viewModelScope.launch {
+        repository.deleteNote(note.id)
+    }
+    
+    fun completeNote(note: Note) = viewModelScope.launch {
+        repository.completeNote(note.id)
     }
 }
-
-
 
 class NoteViewModelFactory(private val repository: NoteRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

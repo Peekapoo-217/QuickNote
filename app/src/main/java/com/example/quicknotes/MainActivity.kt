@@ -13,17 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.quicknotes.ui.theme.QuickNotesTheme
-import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.quicknotes.data.local.database.AppDatabase
 import com.example.quicknotes.repository.NoteRepository
 import com.example.quicknotes.screen.navigation.AppNavigation
-import com.example.quicknotes.viewmodel.NoteViewModel
-import com.example.quicknotes.viewmodel.NoteViewModelFactory
-import androidx.compose.runtime.getValue
-import androidx.core.content.ContextCompat
 import com.example.quicknotes.screen.notification.ReminderWatcher
+import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,27 +27,24 @@ class MainActivity : ComponentActivity() {
 
         requestNotificationPermission()
 
-
         val database = AppDatabase.getDatabase(applicationContext)
         val repository = NoteRepository(
             noteDao = database.noteDao(),
-            completedNoteDao = database.completedNoteDao()
+            completedNoteDao = database.completedNoteDao(),
+            noteImageDao = database.noteImageDao(),
+            context = applicationContext
         )
-        val viewModelFactory = NoteViewModelFactory(repository)
 
         setContent {
             QuickNotesTheme {
-                val viewModel: NoteViewModel = viewModel(factory = viewModelFactory)
-                val notes by viewModel.notes.collectAsState()
                 val navController = rememberNavController()
 
                 // Gọi watcher để theo dõi thời gian còn lại
-                ReminderWatcher(notes = notes, context = this)
+                ReminderWatcher(repository = repository, context = this)
 
                 AppNavigation(
                     navController = navController,
-                    notes = notes,
-                    viewModel = viewModel
+                    repository = repository
                 )
             }
         }
@@ -72,10 +64,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-
 }
-
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {

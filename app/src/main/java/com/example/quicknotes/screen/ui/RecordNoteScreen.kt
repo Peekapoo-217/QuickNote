@@ -4,13 +4,15 @@ import android.app.Activity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.quicknotes.data.local.entity.Note
 import com.example.quicknotes.utilities.speech.SpeechToTextHelper
-import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.repository.NoteRepository
 import kotlinx.coroutines.launch
 import android.Manifest
 import android.content.pm.PackageManager
@@ -23,10 +25,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.navigation.NavController
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecordNoteScreen(viewModel: NoteViewModel, navController: NavController) {
+fun RecordNoteScreen(repository: NoteRepository, navController: NavController) {
     val context = LocalContext.current
     val activity = context as? Activity
     var isRecording by remember { mutableStateOf(false) }
@@ -61,14 +65,33 @@ fun RecordNoteScreen(viewModel: NoteViewModel, navController: NavController) {
                         content = text,
                         colorTag = "none"
                     )
-                    scope.launch { viewModel.insert(note)
-                        Toast.makeText(context, "Note saved", Toast.LENGTH_SHORT).show() }
+                    scope.launch {
+                        try {
+                            withContext(Dispatchers.IO) {
+                                repository.insertNote(note)
+                            }
+                            // Show toast on main thread
+                            Toast.makeText(context, "Note saved successfully", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            // Handle any database errors
+                            Toast.makeText(context, "Error saving note: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 },
                 onError = { error ->
                     resultText = error
                     isRecording = false
+                    // Show error toast on main thread
+                    Toast.makeText(context, "Recording error: $error", Toast.LENGTH_SHORT).show()
                 }
             )
+        }
+    }
+
+    // Cleanup helper when leaving the screen
+    DisposableEffect(Unit) {
+        onDispose {
+            helper?.cleanup()
         }
     }
 

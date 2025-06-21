@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,19 +27,22 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.quicknotes.data.local.entity.Note
+import com.example.quicknotes.repository.NoteRepository
 import com.example.quicknotes.screen.component.NoteItem
-import com.example.quicknotes.viewmodel.NoteViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteListScreen(
-    notes: List<Note>,
-    onAddNote: () -> Unit,
+    repository: NoteRepository,
+    onAddNoteClick: () -> Unit,
     onNoteClick: (Note) -> Unit,
-    viewModel: NoteViewModel,
-    onAddImageNote: () -> Unit,
-    onViewCompletedNotes: () -> Unit,
-    onRecordNote: () -> Unit
+    onCompletedNotesClick: () -> Unit,
+    onRecordNoteClick: () -> Unit,
+    onTranslateClick: () -> Unit
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val columns = if (screenWidth < 600) 2 else 3
@@ -92,7 +97,7 @@ fun NoteListScreen(
                             label = "Completed Notes",
                             onClick = {
                                 fabExpanded = false
-                                onViewCompletedNotes()
+                                onCompletedNotesClick()
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -101,7 +106,7 @@ fun NoteListScreen(
                             label = "Record Voice",
                             onClick = {
                                 fabExpanded = false
-                                onRecordNote()
+                                onRecordNoteClick()
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -110,7 +115,7 @@ fun NoteListScreen(
                             label = "Image Note",
                             onClick = {
                                 fabExpanded = false
-                                onAddImageNote()
+                                onTranslateClick()
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -119,7 +124,7 @@ fun NoteListScreen(
                             label = "Text Note",
                             onClick = {
                                 fabExpanded = false
-                                onAddNote()
+                                onAddNoteClick()
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -143,6 +148,14 @@ fun NoteListScreen(
             }
         }
     ) { paddingValues ->
+        var notes by remember { mutableStateOf<List<Note>>(emptyList()) }
+        
+        LaunchedEffect(Unit) {
+            repository.getAllNotes().collect { noteList ->
+                notes = noteList
+            }
+        }
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -150,7 +163,7 @@ fun NoteListScreen(
                 .padding(paddingValues)
         ) {
             if (notes.isEmpty()) {
-                EmptyStateContent(onAddNote = onAddNote)
+                EmptyStateContent(onAddNoteClick = onAddNoteClick)
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
@@ -163,12 +176,27 @@ fun NoteListScreen(
                         NoteItem(
                             note = note,
                             onClick = { onNoteClick(note) },
-                            onDelete = { viewModel.delete(note) },
+                            onDelete = { 
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    repository.deleteNote(note.id)
+                                }
+                            },
                             onToggleCompleted = { isChecked ->
-                                viewModel.update(note.copy(isCompleted = isChecked))
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    if (isChecked) {
+                                        repository.updateNote(note.copy(isCompleted = true))
+                                        
+                                        delay(10_000)
+                                        repository.completeNote(note.id)
+                                    } else {
+                                        repository.updateNote(note.copy(isCompleted = false))
+                                    }
+                                }
                             },
                             onComplete = {
-                                viewModel.completeNote(note)
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    repository.completeNote(note.id)
+                                }
                             },
                             onDetailClick = { onNoteClick(note) }
                         )
@@ -213,7 +241,7 @@ private fun ActionButton(
 }
 
 @Composable
-private fun EmptyStateContent(onAddNote: () -> Unit) {
+private fun EmptyStateContent(onAddNoteClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -236,7 +264,7 @@ private fun EmptyStateContent(onAddNote: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(24.dp))
         Button(
-            onClick = onAddNote,
+            onClick = onAddNoteClick,
             modifier = Modifier.padding(horizontal = 32.dp)
         ) {
             Icon(Icons.Default.Add, contentDescription = null)

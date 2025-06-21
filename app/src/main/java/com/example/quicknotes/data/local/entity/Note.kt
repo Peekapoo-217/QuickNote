@@ -11,6 +11,6 @@ data class Note(
     val colorTag: String,
     val createdAt: Long = System.currentTimeMillis(),
     val reminderTime: Long? = null,
-    val isCompleted: Boolean = false
-
+    val isCompleted: Boolean = false,
+    val imageUri: String? = null
 )

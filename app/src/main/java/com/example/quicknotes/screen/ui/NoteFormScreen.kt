@@ -5,20 +5,29 @@ import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.quicknotes.data.local.entity.Note
+import com.example.quicknotes.repository.NoteRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteFormScreen(
-    onSave: (Note) -> Unit,
-    onCancel: () -> Unit
+    repository: NoteRepository,
+    onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
     var title by remember { mutableStateOf("") }
@@ -43,117 +52,129 @@ fun NoteFormScreen(
     var expanded by remember { mutableStateOf(false) }
     val selectedPriority = priorities.find { it.second == colorTag }
 
-    // Canh giữa giữa màn hình
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // Khung chứa nội dung
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .wrapContentHeight(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    label = { Text("Content") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-
-                // Row: Set Reminder + Priority
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Reminder (70%)
-                    Button(
-                        onClick = {
-                            val now = Calendar.getInstance()
-                            DatePickerDialog(context, { _, year, month, day ->
-                                TimePickerDialog(context, { _, hour, minute ->
-                                    calendar.set(year, month, day, hour, minute)
-                                    reminderTime = calendar.timeInMillis
-                                }, now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), true).show()
-                            }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH)).show()
-                        },
-                        modifier = Modifier.weight(0.7f)
-                    ) {
-                        Text("Set Reminder")
-                    }
-
-                    // Priority dropdown (30%)
-                    Box(modifier = Modifier.weight(0.3f)) {
-                        OutlinedButton(
-                            onClick = { expanded = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .background(colorMap[colorTag] ?: Color.Gray)
-                                )
-                                Text(
-                                    text = selectedPriority?.first ?: "Priority",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            priorities.forEach { (label, color) ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(10.dp)
-                                                    .background(colorMap[color] ?: Color.Gray)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                label,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                maxLines = 1
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        colorTag = color
-                                        expanded = false
-                                    }
-                                )
-                            }
-                        }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Tạo ghi chú mới") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 }
+            )
+        }
+    ) { padding ->
+        // Canh giữa giữa màn hình
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Khung chứa nội dung
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .wrapContentHeight(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Title") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                // Save / Cancel buttons
+                    OutlinedTextField(
+                        value = content,
+                        onValueChange = { content = it },
+                        label = { Text("Content") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Row: Set Reminder + Priority
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Reminder (70%)
+                        Button(
+                            onClick = {
+                                val now = Calendar.getInstance()
+                                DatePickerDialog(context, { _, year, month, day ->
+                                    TimePickerDialog(context, { _, hour, minute ->
+                                        calendar.set(year, month, day, hour, minute)
+                                        reminderTime = calendar.timeInMillis
+                                    }, now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), true).show()
+                                }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH)).show()
+                            },
+                            modifier = Modifier.weight(0.7f)
+                        ) {
+                            Text("Set Reminder")
+                        }
+
+                        // Priority dropdown (30%)
+                        Box(modifier = Modifier.weight(0.3f)) {
+                            OutlinedButton(
+                                onClick = { expanded = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .background(colorMap[colorTag] ?: Color.Gray)
+                                    )
+                                    Text(
+                                        text = selectedPriority?.first ?: "Priority",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                priorities.forEach { (label, color) ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(10.dp)
+                                                        .background(colorMap[color] ?: Color.Gray)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    label,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            colorTag = color
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Save / Cancel buttons
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -161,14 +182,17 @@ fun NoteFormScreen(
                         Button(
                             onClick = {
                                 if (title.isNotBlank() && content.isNotBlank()) {
-                                    onSave(
-                                        Note(
-                                            title = title,
-                                            content = content,
-                                            colorTag = colorTag.ifBlank { "none" },
-                                            reminderTime = reminderTime
-                                        )
+                                    val note = Note(
+                                        title = title,
+                                        content = content,
+                                        colorTag = colorTag.ifBlank { "none" },
+                                        reminderTime = reminderTime
                                     )
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        repository.insertNote(note)
+                                    }
+                                    Toast.makeText(context, "Note saved", Toast.LENGTH_SHORT).show()
+                                    onBackClick()
                                 } else {
                                     Toast.makeText(
                                         context,
@@ -183,7 +207,7 @@ fun NoteFormScreen(
                         }
 
                         OutlinedButton(
-                            onClick = onCancel,
+                            onClick = onBackClick,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Cancel")
@@ -193,4 +217,5 @@ fun NoteFormScreen(
             }
         }
     }
+}
 

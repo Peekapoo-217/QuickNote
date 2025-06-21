@@ -11,11 +11,19 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.quicknotes.R
 import com.example.quicknotes.data.local.entity.Note
+import com.example.quicknotes.repository.NoteRepository
 import kotlinx.coroutines.delay
 
 @Composable
-fun ReminderWatcher(notes: List<Note>, context: Context) {
+fun ReminderWatcher(repository: NoteRepository, context: Context) {
+    var notes by remember { mutableStateOf<List<Note>>(emptyList()) }
     var notifiedNotes by remember { mutableStateOf(setOf<Int>()) }
+
+    LaunchedEffect(Unit) {
+        repository.getAllNotes().collect { noteList ->
+            notes = noteList
+        }
+    }
 
     LaunchedEffect(notes) {
         while (true) {

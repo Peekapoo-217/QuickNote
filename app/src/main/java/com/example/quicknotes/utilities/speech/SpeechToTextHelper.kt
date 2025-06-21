@@ -18,12 +18,28 @@ class SpeechToTextHelper(
     init {
         speechRecognizer.setRecognitionListener(object : RecognitionListener {
             override fun onResults(results: Bundle?) {
-                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                matches?.firstOrNull()?.let { onResult(it) }
+                try {
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    matches?.firstOrNull()?.let { onResult(it) }
+                } catch (e: Exception) {
+                    onError("Error processing results: ${e.message}")
+                }
             }
 
             override fun onError(error: Int) {
-                onError("Speech recognition error: $error")
+                val errorMessage = when (error) {
+                    SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+                    SpeechRecognizer.ERROR_CLIENT -> "Client side error"
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
+                    SpeechRecognizer.ERROR_NETWORK -> "Network error"
+                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                    SpeechRecognizer.ERROR_NO_MATCH -> "No speech match"
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognition service busy"
+                    SpeechRecognizer.ERROR_SERVER -> "Server error"
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
+                    else -> "Unknown error: $error"
+                }
+                onError(errorMessage)
             }
 
             // Các hàm không cần thiết có thể để trống
@@ -38,16 +54,31 @@ class SpeechToTextHelper(
     }
 
     fun startListening() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            }
+            speechRecognizer.startListening(intent)
+        } catch (e: Exception) {
+            onError("Error starting speech recognition: ${e.message}")
         }
-        speechRecognizer.startListening(intent)
     }
 
     fun stop() {
-        speechRecognizer.stopListening()
-/*        speechRecognizer.destroy()*/
+        try {
+            speechRecognizer.stopListening()
+        } catch (e: Exception) {
+            onError("Error stopping speech recognition: ${e.message}")
+        }
     }
 
+    fun cleanup() {
+        try {
+            speechRecognizer.destroy()
+        } catch (e: Exception) {
+            // Ignore cleanup errors
+        }
+    }
 }

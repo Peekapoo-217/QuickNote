@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -64,9 +66,8 @@ fun NoteItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val contentLines = note.content.split("\n")
-    val imageLine = contentLines.find { it.startsWith("[image_uri:") }
-    val imageUri = imageLine?.removePrefix("[image_uri:")?.removeSuffix("]")
+    // Sử dụng imageUri từ database thay vì parse từ content
+    val imageUri = note.imageUri
 
     val animatedBgColor by animateColorAsState(
         if (isPressed) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
@@ -77,13 +78,6 @@ fun NoteItem(
 
     val textDecoration = if (note.isCompleted) TextDecoration.LineThrough else TextDecoration.None
     val textAlpha = if (note.isCompleted) 0.5f else 1f
-
-    LaunchedEffect(note.isCompleted) {
-        if (note.isCompleted) {
-            delay(10_000)
-            onComplete()
-        }
-    }
 
     Card(
         modifier = Modifier
@@ -168,7 +162,7 @@ fun NoteItem(
             if (imageUri != null) {
                 Image(
                     painter = rememberAsyncImagePainter(Uri.parse(imageUri)),
-                    contentDescription = "Ảnh dịch",
+                    contentDescription = "Note image",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)

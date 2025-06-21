@@ -13,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,12 +26,15 @@ import coil.request.ImageRequest
 import com.example.quicknotes.data.local.entity.Note
 import com.example.quicknotes.utilities.ocr.TextRecognitionHelper
 import com.example.quicknotes.utilities.translate.TranslationHelper
-import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.repository.NoteRepository
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranslateScreen(viewModel: NoteViewModel) {
+fun TranslateScreen(repository: NoteRepository) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var originalText by remember { mutableStateOf("") }
@@ -50,15 +55,38 @@ fun TranslateScreen(viewModel: NoteViewModel) {
                 TranslationHelper.translateText(context, text) { translated ->
                     translatedText = translated
                     isProcessing = false
+                    
+                    // Tạo note mới với content không chứa image URI
                     val newNote = Note(
                         title = "Translated Image ${System.currentTimeMillis()}",
-                        content = "$translated\n\n[Original OCR: $text]\n[image_uri:${imageUri.toString()}]",
+                        content = "$translated\n\n[Original OCR: $text]",
                         createdAt = System.currentTimeMillis(),
                         isCompleted = false,
                         reminderTime = null,
-                        colorTag = "none"
+                        colorTag = "none",
+                        imageUri = null // Sẽ được cập nhật sau khi lưu ảnh
                     )
-                    viewModel.insert(newNote)
+                    
+                    // Lưu note trước, sau đó lưu ảnh
+                    scope.launch(Dispatchers.IO) {
+                        val noteId = repository.insertNoteAndGetId(newNote)
+                        if (noteId > 0) {
+                            // Lưu ảnh vào database
+                            val savedImage = repository.addImageToNote(
+                                noteId = noteId,
+                                imageUri = it,
+                                description = "Translated image"
+                            )
+                            
+                            // Cập nhật note với imageUri chính
+                            if (savedImage != null) {
+                                repository.updateNote(newNote.copy(
+                                    id = noteId,
+                                    imageUri = savedImage.imageUri
+                                ))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -173,12 +201,21 @@ fun TranslateScreen(viewModel: NoteViewModel) {
                 }
             }
 
-            // Loading indicator
+            // Processing indicator
             if (isProcessing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Processing image...")
+                    }
+                }
             }
         }
     }
