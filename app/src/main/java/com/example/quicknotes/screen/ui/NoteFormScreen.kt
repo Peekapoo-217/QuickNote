@@ -27,13 +27,14 @@ import java.util.*
 @Composable
 fun NoteFormScreen(
     repository: NoteRepository,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    noteToEdit: Note? = null
 ) {
     val context = LocalContext.current
-    var title by remember { mutableStateOf("") }
-    var content by remember { mutableStateOf("") }
-    var colorTag by remember { mutableStateOf("") }
-    var reminderTime by remember { mutableStateOf<Long?>(null) }
+    var title by remember { mutableStateOf(noteToEdit?.title ?: "") }
+    var content by remember { mutableStateOf(noteToEdit?.content ?: "") }
+    var colorTag by remember { mutableStateOf(noteToEdit?.colorTag ?: "") }
+    var reminderTime by remember { mutableStateOf(noteToEdit?.reminderTime) }
 
     val calendar = Calendar.getInstance()
 
@@ -55,7 +56,7 @@ fun NoteFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tạo ghi chú mới") },
+                title = { Text(if (noteToEdit != null) "Chỉnh sửa ghi chú" else "Tạo ghi chú mới") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -183,15 +184,22 @@ fun NoteFormScreen(
                             onClick = {
                                 if (title.isNotBlank() && content.isNotBlank()) {
                                     val note = Note(
+                                        id = noteToEdit?.id ?: 0,
                                         title = title,
                                         content = content,
                                         colorTag = colorTag.ifBlank { "none" },
-                                        reminderTime = reminderTime
+                                        reminderTime = reminderTime,
+                                        isCompleted = noteToEdit?.isCompleted ?: false,
+                                        imageUri = noteToEdit?.imageUri
                                     )
                                     CoroutineScope(Dispatchers.IO).launch {
-                                        repository.insertNote(note)
+                                        if (noteToEdit != null) {
+                                            repository.update(note)
+                                        } else {
+                                            repository.insertNote(note)
+                                        }
                                     }
-                                    Toast.makeText(context, "Note saved", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, if (noteToEdit != null) "Note updated" else "Note saved", Toast.LENGTH_SHORT).show()
                                     onBackClick()
                                 } else {
                                     Toast.makeText(

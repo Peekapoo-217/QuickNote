@@ -30,7 +30,6 @@ class NoteRepository(
     suspend fun insertAndGetId(note: Note): Long = noteDao.insertAndGetId(note)
     suspend fun insertNoteAndGetId(note: Note): Int = noteDao.insertAndGetId(note).toInt()
     suspend fun update(note: Note) = noteDao.update(note)
-    suspend fun updateNote(note: Note) = noteDao.update(note)
     suspend fun delete(note: Note) {
         // Xóa tất cả ảnh của note trước
         val imageList = noteImageDao.getImagesByNoteId(note.id).first()
@@ -118,7 +117,7 @@ class NoteRepository(
     
     suspend fun uncompleteNote(noteId: Int) {
         val note = noteDao.getNoteById(noteId) ?: return
-        updateNote(note.copy(isCompleted = false))
+        update(note.copy(isCompleted = false))
     }
     
     suspend fun completeNote(note: Note) {

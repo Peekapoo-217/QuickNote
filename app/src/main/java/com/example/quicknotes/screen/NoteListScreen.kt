@@ -42,7 +42,8 @@ fun NoteListScreen(
     onNoteClick: (Note) -> Unit,
     onCompletedNotesClick: () -> Unit,
     onRecordNoteClick: () -> Unit,
-    onTranslateClick: () -> Unit
+    onTranslateClick: () -> Unit,
+    onEditNote: (Note) -> Unit
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val columns = if (screenWidth < 600) 2 else 3
@@ -184,12 +185,12 @@ fun NoteListScreen(
                             onToggleCompleted = { isChecked ->
                                 CoroutineScope(Dispatchers.IO).launch {
                                     if (isChecked) {
-                                        repository.updateNote(note.copy(isCompleted = true))
+                                        repository.update(note.copy(isCompleted = true))
                                         
                                         delay(10_000)
                                         repository.completeNote(note.id)
                                     } else {
-                                        repository.updateNote(note.copy(isCompleted = false))
+                                        repository.update(note.copy(isCompleted = false))
                                     }
                                 }
                             },
@@ -198,7 +199,8 @@ fun NoteListScreen(
                                     repository.completeNote(note.id)
                                 }
                             },
-                            onDetailClick = { onNoteClick(note) }
+                            onDetailClick = { onNoteClick(note) },
+                            onEditClick = { onEditNote(note) }
                         )
                     }
                 }

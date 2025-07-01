@@ -38,7 +38,8 @@ fun NoteItem(
     onDelete: () -> Unit,
     onToggleCompleted: (Boolean) -> Unit,
     onComplete: () -> Unit,
-    onDetailClick: () -> Unit
+    onDetailClick: () -> Unit,
+    onEditClick: () -> Unit
 ) {
     val tagColors = mapOf(
         "red" to Color(0xFFFFCDD2),
@@ -134,6 +135,13 @@ fun NoteItem(
                         onClick = {
                             expanded = false
                             onDetailClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            expanded = false
+                            onEditClick()
                         }
                     )
                     DropdownMenuItem(

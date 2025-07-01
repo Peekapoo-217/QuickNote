@@ -80,7 +80,7 @@ fun TranslateScreen(repository: NoteRepository) {
                             
                             // Cập nhật note với imageUri chính
                             if (savedImage != null) {
-                                repository.updateNote(newNote.copy(
+                                repository.update(newNote.copy(
                                     id = noteId,
                                     imageUri = savedImage.imageUri
                                 ))

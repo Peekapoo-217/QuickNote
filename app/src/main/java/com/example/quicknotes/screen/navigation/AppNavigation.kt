@@ -14,6 +14,7 @@ import com.example.quicknotes.screen.NoteListScreen
 import com.example.quicknotes.screen.ui.CompletedNoteScreen
 import com.example.quicknotes.screen.ui.NoteDetailScreen
 import com.example.quicknotes.screen.ui.NoteFormScreen
+import com.example.quicknotes.screen.ui.NoteEditScreen
 import com.example.quicknotes.screen.ui.RecordNoteScreen
 import com.example.quicknotes.screen.ui.TranslateScreen
 import com.example.quicknotes.repository.NoteRepository
@@ -47,6 +48,9 @@ fun AppNavigation(
                 },
                 onTranslateClick = {
                     navController.navigate("translate")
+                },
+                onEditNote = { note ->
+                    navController.navigate("note_edit/${note.id}")
                 }
             )
         }
@@ -55,6 +59,21 @@ fun AppNavigation(
             NoteFormScreen(
                 repository = repository,
                 onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable("note_form/{noteId}") { backStackEntry ->
+            val noteId = backStackEntry.arguments?.getString("noteId")?.toIntOrNull()
+            var note by remember { mutableStateOf<Note?>(null) }
+            LaunchedEffect(noteId) {
+                if (noteId != null) {
+                    note = repository.getNoteById(noteId)
+                }
+            }
+            NoteFormScreen(
+                repository = repository,
+                onBackClick = { navController.popBackStack() },
+                noteToEdit = note
             )
         }
 
@@ -108,6 +127,23 @@ fun AppNavigation(
             TranslateScreen(
                 repository = repository
             )
+        }
+
+        composable("note_edit/{noteId}") { backStackEntry ->
+            val noteId = backStackEntry.arguments?.getString("noteId")?.toIntOrNull()
+            var note by remember { mutableStateOf<Note?>(null) }
+            LaunchedEffect(noteId) {
+                if (noteId != null) {
+                    note = repository.getNoteById(noteId)
+                }
+            }
+            note?.let { currentNote ->
+                NoteEditScreen(
+                    note = currentNote,
+                    repository = repository,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
     }
 }
