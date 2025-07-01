@@ -42,7 +42,6 @@ class SpeechToTextHelper(
                 onError(errorMessage)
             }
 
-            // Các hàm không cần thiết có thể để trống
             override fun onReadyForSpeech(params: Bundle?) {}
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {}
