@@ -17,6 +17,9 @@ import com.example.quicknotes.repository.NoteRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.viewmodel.NoteViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,13 +27,9 @@ fun CompletedNoteScreen(
     repository: NoteRepository,
     onBackClick: () -> Unit
 ) {
-    var completedNotes by remember { mutableStateOf<List<CompletedNote>>(emptyList()) }
-    
-    LaunchedEffect(Unit) {
-        repository.getAllCompletedNotes().collect { notes ->
-            completedNotes = notes
-        }
-    }
+    val factory = remember { NoteViewModelFactory(repository) }
+    val viewModel: NoteViewModel = viewModel(factory = factory)
+    val completedNotes by viewModel.allCompletedNotes.collectAsState(initial = emptyList())
     
     Scaffold(
         topBar = {
@@ -81,9 +80,7 @@ fun CompletedNoteScreen(
                             )
                             TextButton(
                                 onClick = {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        repository.deleteCompleted(completedNote)
-                                    }
+                                    viewModel.deleteCompletedNote(completedNote)
                                 }
                             ) {
                                 Text("Xóa")

@@ -54,6 +54,10 @@ import java.util.Locale
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.rememberScrollState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.viewmodel.NoteViewModelFactory
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,10 +67,12 @@ fun NoteEditScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    var title by remember { mutableStateOf(note.title) }
-    var content by remember { mutableStateOf(note.content) }
-    var colorTag by remember { mutableStateOf(note.colorTag) }
-    var reminderTime by remember { mutableStateOf(note.reminderTime) }
+    val factory = remember { NoteViewModelFactory(repository) }
+    val viewModel: NoteViewModel = viewModel(factory = factory)
+    var title by rememberSaveable { mutableStateOf(note.title) }
+    var content by rememberSaveable { mutableStateOf(note.content) }
+    var colorTag by rememberSaveable { mutableStateOf(note.colorTag) }
+    var reminderTime by rememberSaveable { mutableStateOf(note.reminderTime) }
     val calendar = Calendar.getInstance()
     val priorities = listOf(
         "High" to "red",
@@ -78,7 +84,7 @@ fun NoteEditScreen(
         "orange" to Color(0xFFFF9800),
         "green" to Color(0xFF4CAF50)
     )
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     val selectedPriority = priorities.find { it.second == colorTag }
     val reminderFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
 
@@ -225,18 +231,15 @@ fun NoteEditScreen(
                                         colorTag = colorTag,
                                         reminderTime = reminderTime
                                     )
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        repository.update(updatedNote)
-                                    }
-                                    Toast.makeText(context, "Note updated", Toast.LENGTH_SHORT).show()
+                                    viewModel.update(updatedNote)
                                     onBackClick()
                                 } else {
-                                    Toast.makeText(context, "Title & Content required", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Vui lòng nhập đủ tiêu đề và nội dung", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Save")
+                            Text("Lưu")
                         }
                         OutlinedButton(
                             onClick = onBackClick,

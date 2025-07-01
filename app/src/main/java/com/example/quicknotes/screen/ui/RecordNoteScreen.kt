@@ -20,21 +20,28 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.navigation.NavController
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.viewmodel.NoteViewModelFactory
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordNoteScreen(repository: NoteRepository, navController: NavController) {
     val context = LocalContext.current
     val activity = context as? Activity
-    var isRecording by remember { mutableStateOf(false) }
-    var resultText by remember { mutableStateOf("") }
+    var isRecording by rememberSaveable { mutableStateOf(false) }
+    var resultText by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     val launcher = rememberLauncherForActivityResult(
@@ -44,6 +51,9 @@ fun RecordNoteScreen(repository: NoteRepository, navController: NavController) {
             Toast.makeText(context, "Microphone permission required", Toast.LENGTH_SHORT).show()
         }
     }
+
+    val factory = remember { NoteViewModelFactory(repository) }
+    val viewModel: NoteViewModel = viewModel(factory = factory)
 
     LaunchedEffect(Unit) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
@@ -67,13 +77,9 @@ fun RecordNoteScreen(repository: NoteRepository, navController: NavController) {
                     )
                     scope.launch {
                         try {
-                            withContext(Dispatchers.IO) {
-                                repository.insertNote(note)
-                            }
-                            // Show toast on main thread
+                            viewModel.insert(note)
                             Toast.makeText(context, "Note saved successfully", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
-                            // Handle any database errors
                             Toast.makeText(context, "Error saving note: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -81,7 +87,6 @@ fun RecordNoteScreen(repository: NoteRepository, navController: NavController) {
                 onError = { error ->
                     resultText = error
                     isRecording = false
-                    // Show error toast on main thread
                     Toast.makeText(context, "Recording error: $error", Toast.LENGTH_SHORT).show()
                 }
             )
@@ -98,59 +103,90 @@ fun RecordNoteScreen(repository: NoteRepository, navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Voice Note") })
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    if (!isRecording) {
-                        isRecording = true
-                        helper?.startListening()
-                    } else {
-                        isRecording = false
-                        helper?.stop()
-                    }
-                },
-                containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = if (isRecording) Icons.Default.MicOff else Icons.Default.Mic,
-                    contentDescription = if (isRecording) "Stop Recording" else "Start Recording"
-                )
-            }
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
-                .padding(innerPadding)
-                .padding(16.dp)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(innerPadding),
+            contentAlignment = Alignment.Center
         ) {
-            Text("Voice to Note", style = MaterialTheme.typography.headlineSmall)
-
-            Spacer(Modifier.height(32.dp))
-
-            if (isRecording) {
-                CircularProgressIndicator()
-                Spacer(Modifier.height(12.dp))
-                Text("Listening...", style = MaterialTheme.typography.bodyMedium)
-            }
-
-            if (resultText.isNotBlank()) {
-                Spacer(Modifier.height(24.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(3.dp)
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "Hold to record",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(32.dp))
+                val infiniteTransition = rememberInfiniteTransition(label = "mic_wave")
+                val waveScale by infiniteTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.4f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(600, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "mic_wave_anim"
+                )
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    isRecording = true
+                                    helper?.startListening()
+                                    try {
+                                        awaitRelease()
+                                    } finally {
+                                        isRecording = false
+                                        helper?.stop()
+                                    }
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Transcribed Text", style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = resultText,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
+                    val scale = if (isRecording) waveScale else 1f
+                    Icon(
+                        imageVector = if (isRecording) Icons.Filled.GraphicEq else Icons.Outlined.Mic,
+                        contentDescription = if (isRecording) "Recording" else "Start Recording",
+                        tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(72.dp).graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                    )
+                }
+                Spacer(Modifier.height(32.dp))
+                if (isRecording) {
+                    Text(
+                        "Listening...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (resultText.isNotBlank()) {
+                    Spacer(Modifier.height(32.dp))
+                    Text(
+                        "Result:",
+                        style = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.primary)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = resultText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }

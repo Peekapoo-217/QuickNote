@@ -52,6 +52,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.4.0") // để load ảnh
 
     implementation("androidx.room:room-runtime:2.6.1")
+    implementation(libs.language.id.common)
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")

@@ -33,9 +33,13 @@ import com.example.quicknotes.data.local.entity.Note
 import com.example.quicknotes.data.local.entity.NoteImage
 import com.example.quicknotes.screen.component.dialog.ReminderDialog
 import com.example.quicknotes.repository.NoteRepository
+import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.viewmodel.NoteViewModelFactory
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,9 +50,11 @@ fun NoteDetailScreen(
     onDeleteClick: () -> Unit,
     onToggleCompleted: (Boolean) -> Unit
 ) {
-    var showDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var noteImages by remember { mutableStateOf<List<NoteImage>>(emptyList()) }
+    val factory = remember { NoteViewModelFactory(repository) }
+    val viewModel: NoteViewModel = viewModel(factory = factory)
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var noteImages by rememberSaveable { mutableStateOf<List<NoteImage>>(emptyList()) }
 
     // Lấy ảnh của note từ database
     LaunchedEffect(note.id) {

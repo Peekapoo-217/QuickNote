@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.viewmodel.NoteViewModelFactory
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,10 +37,12 @@ fun NoteFormScreen(
     noteToEdit: Note? = null
 ) {
     val context = LocalContext.current
-    var title by remember { mutableStateOf(noteToEdit?.title ?: "") }
-    var content by remember { mutableStateOf(noteToEdit?.content ?: "") }
-    var colorTag by remember { mutableStateOf(noteToEdit?.colorTag ?: "") }
-    var reminderTime by remember { mutableStateOf(noteToEdit?.reminderTime) }
+    val factory = remember { NoteViewModelFactory(repository) }
+    val viewModel: NoteViewModel = viewModel(factory = factory)
+    var title by rememberSaveable { mutableStateOf(noteToEdit?.title ?: "") }
+    var content by rememberSaveable { mutableStateOf(noteToEdit?.content ?: "") }
+    var colorTag by rememberSaveable { mutableStateOf(noteToEdit?.colorTag ?: "") }
+    var reminderTime by rememberSaveable { mutableStateOf(noteToEdit?.reminderTime) }
 
     val calendar = Calendar.getInstance()
 
@@ -50,7 +58,7 @@ fun NoteFormScreen(
         "green" to Color(0xFF4CAF50)
     )
 
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     val selectedPriority = priorities.find { it.second == colorTag }
 
     Scaffold(
@@ -70,19 +78,21 @@ fun NoteFormScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
+                .padding(horizontal = 8.dp, vertical = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             // Khung chứa nội dung
             Card(
                 modifier = Modifier
-                    .fillMaxWidth(0.95f)
-                    .wrapContentHeight(),
+                    .fillMaxWidth()
+                    .widthIn(max = 500.dp)
+                    .padding(horizontal = 8.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(20.dp),
+                        .padding(20.dp)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedTextField(
@@ -192,26 +202,19 @@ fun NoteFormScreen(
                                         isCompleted = noteToEdit?.isCompleted ?: false,
                                         imageUri = noteToEdit?.imageUri
                                     )
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        if (noteToEdit != null) {
-                                            repository.update(note)
-                                        } else {
-                                            repository.insertNote(note)
-                                        }
+                                    if (noteToEdit != null) {
+                                        viewModel.update(note)
+                                    } else {
+                                        viewModel.insert(note)
                                     }
-                                    Toast.makeText(context, if (noteToEdit != null) "Note updated" else "Note saved", Toast.LENGTH_SHORT).show()
                                     onBackClick()
                                 } else {
-                                    Toast.makeText(
-                                        context,
-                                        "Title & Content required",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    Toast.makeText(context, "Vui lòng nhập đủ tiêu đề và nội dung", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Save")
+                            Text(if (noteToEdit != null) "Lưu" else "Tạo mới")
                         }
 
                         OutlinedButton(

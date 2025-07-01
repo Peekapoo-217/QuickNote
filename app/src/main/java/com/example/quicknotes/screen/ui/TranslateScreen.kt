@@ -17,7 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,11 @@ import com.example.quicknotes.utilities.translate.TranslationHelper
 import com.example.quicknotes.repository.NoteRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.viewmodel.NoteViewModelFactory
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.google.mlkit.nl.languageid.LanguageIdentification
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,10 +43,10 @@ fun TranslateScreen(repository: NoteRepository) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var originalText by remember { mutableStateOf("") }
-    var translatedText by remember { mutableStateOf("") }
-    var isProcessing by remember { mutableStateOf(false) }
+    var imageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var originalText by rememberSaveable { mutableStateOf("") }
+    var translatedText by rememberSaveable { mutableStateOf("") }
+    var isProcessing by rememberSaveable { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -50,35 +57,32 @@ fun TranslateScreen(repository: NoteRepository) {
             translatedText = "Processing..."
             isProcessing = true
 
-            TextRecognitionHelper.recognizeText(context, it) { text ->
-                originalText = text
-                TranslationHelper.translateText(context, text) { translated ->
+            // 1. OCR
+            TextRecognitionHelper.recognizeText(context, it) { ocrText ->
+                originalText = ocrText
+                // 2. Dịch (fix cứng EN->VI)
+                TranslationHelper.translateText(context, ocrText) { translated ->
                     translatedText = translated
                     isProcessing = false
-                    
-                    // Tạo note mới với content không chứa image URI
+
+                    // 3. Tạo note mới
                     val newNote = Note(
                         title = "Translated Image ${System.currentTimeMillis()}",
-                        content = "$translated\n\n[Original OCR: $text]",
+                        content = "$translated\n\n[Original OCR: $ocrText]",
                         createdAt = System.currentTimeMillis(),
                         isCompleted = false,
                         reminderTime = null,
                         colorTag = "none",
-                        imageUri = null // Sẽ được cập nhật sau khi lưu ảnh
+                        imageUri = null
                     )
-                    
-                    // Lưu note trước, sau đó lưu ảnh
                     scope.launch(Dispatchers.IO) {
                         val noteId = repository.insertNoteAndGetId(newNote)
                         if (noteId > 0) {
-                            // Lưu ảnh vào database
                             val savedImage = repository.addImageToNote(
                                 noteId = noteId,
                                 imageUri = it,
                                 description = "Translated image"
                             )
-                            
-                            // Cập nhật note với imageUri chính
                             if (savedImage != null) {
                                 repository.update(newNote.copy(
                                     id = noteId,
@@ -91,6 +95,9 @@ fun TranslateScreen(repository: NoteRepository) {
             }
         }
     }
+
+    val factory = remember { NoteViewModelFactory(repository) }
+    val viewModel: NoteViewModel = viewModel(factory = factory)
 
     Scaffold(
         topBar = {
@@ -108,112 +115,122 @@ fun TranslateScreen(repository: NoteRepository) {
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Select Image Button
-            Button(
+            OutlinedButton(
                 onClick = { launcher.launch("image/*") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.padding(top = 8.dp)
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Image, contentDescription = null)
-                    Text("Select Image to Translate")
-                }
+                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Select Image")
             }
-
             // Display selected image
             imageUri?.let {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(2.dp)
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(context).data(it).build(),
                         contentDescription = "Selected Image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 }
             }
-
+            // Processing indicator
+            if (isProcessing) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text("Processing...", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
             // Display OCR result
             if (originalText.isNotBlank()) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 Icons.Default.TextFields,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
                             )
-                            Text("Recognized Text")
+                            Text(
+                                "Recognized Text",
+                                style = MaterialTheme.typography.titleSmall
+                            )
                         }
                         SelectionContainer {
-                            Text(originalText)
+                            Text(
+                                originalText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Start
+                            )
                         }
                     }
                 }
             }
-
             // Display translated result
             if (translatedText.isNotBlank()) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 Icons.Default.Translate,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
                             )
-                            Text("Translated Text")
+                            Text(
+                                "Translated Text",
+                                style = MaterialTheme.typography.titleSmall
+                            )
                         }
                         SelectionContainer {
-                            Text(translatedText)
+                            Text(
+                                translatedText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Start
+                            )
                         }
-                    }
-                }
-            }
-
-            // Processing indicator
-            if (isProcessing) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Processing image...")
                     }
                 }
             }

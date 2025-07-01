@@ -33,6 +33,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quicknotes.viewmodel.NoteViewModel
+import com.example.quicknotes.viewmodel.NoteViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +48,9 @@ fun NoteListScreen(
     onTranslateClick: () -> Unit,
     onEditNote: (Note) -> Unit
 ) {
+    val factory = remember { NoteViewModelFactory(repository) }
+    val viewModel: NoteViewModel = viewModel(factory = factory)
+    val notes by viewModel.allNotes.collectAsState(initial = emptyList())
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val columns = if (screenWidth < 600) 2 else 3
     var fabExpanded by remember { mutableStateOf(false) }
@@ -149,14 +155,6 @@ fun NoteListScreen(
             }
         }
     ) { paddingValues ->
-        var notes by remember { mutableStateOf<List<Note>>(emptyList()) }
-        
-        LaunchedEffect(Unit) {
-            repository.getAllNotes().collect { noteList ->
-                notes = noteList
-            }
-        }
-        
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -177,28 +175,15 @@ fun NoteListScreen(
                         NoteItem(
                             note = note,
                             onClick = { onNoteClick(note) },
-                            onDelete = { 
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    repository.deleteNote(note.id)
-                                }
-                            },
+                            onDelete = { viewModel.delete(note) },
                             onToggleCompleted = { isChecked ->
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    if (isChecked) {
-                                        repository.update(note.copy(isCompleted = true))
-                                        
-                                        delay(10_000)
-                                        repository.completeNote(note.id)
-                                    } else {
-                                        repository.update(note.copy(isCompleted = false))
-                                    }
+                                if (isChecked) {
+                                    viewModel.startPendingComplete(note, 5000)
+                                } else {
+                                    viewModel.cancelPendingComplete(note)
                                 }
                             },
-                            onComplete = {
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    repository.completeNote(note.id)
-                                }
-                            },
+                            onComplete = { viewModel.completeNote(note) },
                             onDetailClick = { onNoteClick(note) },
                             onEditClick = { onEditNote(note) }
                         )
