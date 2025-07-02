@@ -36,6 +36,12 @@ import com.example.quicknotes.viewmodel.NoteViewModel
 import com.example.quicknotes.viewmodel.NoteViewModelFactory
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.google.mlkit.nl.languageid.LanguageIdentification
+import androidx.core.content.FileProvider
+import java.io.File
+import android.content.Context
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +53,16 @@ fun TranslateScreen(repository: NoteRepository) {
     var originalText by rememberSaveable { mutableStateOf("") }
     var translatedText by rememberSaveable { mutableStateOf("") }
     var isProcessing by rememberSaveable { mutableStateOf(false) }
+    var cameraImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Hàm tạo file tạm cho ảnh chụp
+    fun createImageFile(context: Context): File {
+        val storageDir = context.cacheDir
+        return File.createTempFile(
+            "camera_image_", ".jpg", storageDir
+        )
+    }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -60,7 +76,7 @@ fun TranslateScreen(repository: NoteRepository) {
             // 1. OCR
             TextRecognitionHelper.recognizeText(context, it) { ocrText ->
                 originalText = ocrText
-                // 2. Dịch (fix cứng EN->VI)
+                // 2. Dịch
                 TranslationHelper.translateText(context, ocrText) { translated ->
                     translatedText = translated
                     isProcessing = false
@@ -96,6 +112,61 @@ fun TranslateScreen(repository: NoteRepository) {
         }
     }
 
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraImageUri != null) {
+            imageUri = cameraImageUri
+            originalText = ""
+            translatedText = "Processing..."
+            isProcessing = true
+
+            TextRecognitionHelper.recognizeText(context, cameraImageUri!!) { ocrText ->
+                originalText = ocrText
+                TranslationHelper.translateText(context, ocrText) { translated ->
+                    translatedText = translated
+                    isProcessing = false
+
+                    val newNote = Note(
+                        title = "Translated Image ${System.currentTimeMillis()}",
+                        content = "$translated\n\n[Original OCR: $ocrText]",
+                        createdAt = System.currentTimeMillis(),
+                        isCompleted = false,
+                        reminderTime = null,
+                        colorTag = "none",
+                        imageUri = null
+                    )
+                    scope.launch(Dispatchers.IO) {
+                        val noteId = repository.insertNoteAndGetId(newNote)
+                        if (noteId > 0) {
+                            val savedImage = repository.addImageToNote(
+                                noteId = noteId,
+                                imageUri = cameraImageUri!!,
+                                description = "Translated image"
+                            )
+                            if (savedImage != null) {
+                                repository.update(newNote.copy(
+                                    id = noteId,
+                                    imageUri = savedImage.imageUri
+                                ))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            pendingCameraUri?.let { uri ->
+                cameraLauncher.launch(uri)
+            }
+        }
+    }
+
     val factory = remember { NoteViewModelFactory(repository) }
     val viewModel: NoteViewModel = viewModel(factory = factory)
 
@@ -121,14 +192,49 @@ fun TranslateScreen(repository: NoteRepository) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Select Image Button
-            OutlinedButton(
-                onClick = { launcher.launch("image/*") },
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.padding(top = 8.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Select Image")
+                OutlinedButton(
+                    onClick = { launcher.launch("image/*") },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Chọn ảnh")
+                }
+                OutlinedButton(
+                    onClick = {
+                        // Tạo file tạm để lưu ảnh chụp
+                        val photoFile = createImageFile(context)
+                        val uri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.provider",
+                            photoFile
+                        )
+                        cameraImageUri = uri
+                        // Kiểm tra quyền CAMERA trước khi mở camera
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                            == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            // Nếu đã có quyền, mở camera luôn
+                            cameraLauncher.launch(uri)
+                        } else {
+                            // Nếu chưa có quyền, lưu Uri tạm và xin quyền CAMERA
+                            pendingCameraUri = uri
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Chụp ảnh")
+                }
             }
             // Display selected image
             imageUri?.let {
